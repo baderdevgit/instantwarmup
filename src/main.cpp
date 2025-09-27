@@ -62,18 +62,66 @@ void setup() {
 
 void loop() {
 
-  //on button press
+  if (Serial.available() > 0) {
+    char c = Serial.read();
 
-  //write a part one shocking sequence that slowly ramps up to be faster and faster
+    if (c == 'd') {
+      BotScoopSequence();
+    }
+  }
 
-  //move both side scoop servos and move them back
+}
 
-  //write a part two shocking sequence
-  
+void SupplementSequence() {
+
+  BotScoopSequence();
+
+  delay(250);
+
+  TopScoopSequence();
+
+  delay(500);
+
   //open the monster
-  OpenCan();
+  MonsterCanSequence();
+  
+  delay(500);
 
-  //tilt the monster and reset its position
+  //move main scoop up
+  middle_servo.write(0); //not sure if 0 or 180
+
+  //back and forth of main scoop
+}
+
+void BotScoopSequence() {
+  //move bottom scoop
+  bot_scoop_sweep_servo.write(45); //might be 135 idk
+  delay(250);
+  //turn it
+  bot_scoop_tilt_servo.write(180);
+  delay(500);
+  bot_scoop_tilt_servo.write(0);
+  delay(250);
+  //move bottom scoop back
+  bot_scoop_sweep_servo.write(90);
+}
+
+void TopScoopSequence() {
+  //move bottom scoop
+  top_scoop_sweep_servo.write(45); //might be 135 idk
+  delay(250);
+  //turn it
+  top_scoop_tilt_servo.write(180);
+  delay(500);
+  top_scoop_tilt_servo.write(0);
+  delay(250);
+  //move bottom scoop back
+  top_scoop_sweep_servo.write(90);
+}
+
+void MonsterCanSequence() {
+  OpenCan();
+  delay(500);
   TiltCan();
   delay(500);
   UnTiltCan();
