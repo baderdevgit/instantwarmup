@@ -30,7 +30,7 @@ Servo monster_lid_servo; // fixed typo: should be a Servo, not int
 
 void setup() {
   Serial.begin(115200);
-  Serial.println("Attaching all servos and setting to 90°...");
+  Serial.println("Program Ready, Press D to trigger");
 
   // Attach all servos to their pins
   bot_scoop_sweep_servo.attach(bottom_scoop_sweep_pin);
