@@ -1,6 +1,13 @@
 #include <Arduino.h>
 #include <ESP32Servo.h>
 
+void BotScoopSequence();
+void TopScoopSequence();
+void MonsterCanSequence();
+void OpenCan();
+void TiltCan();
+void UnTiltCan();
+
 // Assign PWM-capable pins for each servo
 int bottom_scoop_sweep_pin = 27;
 int bottom_scoop_tilt_pin  = 26;
@@ -14,8 +21,8 @@ int left_bicept_relay  = 4;
 int right_bicept_relay = 5;
 int left_tricept_relay = 16;
 int right_tricept_relay= 17;
-int left_front_delt_relay    = 18;
-int right_front_delt_relay   = 19;
+int left_front_delt_relay    = 14;
+int right_front_delt_relay   = 15;
 int left_side_delt_relay    = 21;
 int right_side_delt_relay   = 22;
 
@@ -43,12 +50,28 @@ void setup() {
 
   // Set all servos to 90°
   bot_scoop_sweep_servo.write(90);
+  delay(50);
   bot_scoop_tilt_servo.write(0);
+  delay(50);
   top_scoop_sweep_servo.write(90);
+  delay(50);
   top_scoop_tilt_servo.write(0);
+  delay(50);
   middle_servo.write(90);
+  delay(50);
   monster_tilt_servo.write(0);
+  delay(50);
   monster_lid_servo.write(0);
+  delay(50);
+
+  pinMode(left_bicept_relay, OUTPUT);
+  pinMode(right_bicept_relay, OUTPUT);
+  pinMode(left_tricept_relay, OUTPUT);
+  pinMode(right_tricept_relay, OUTPUT);
+  pinMode(left_front_delt_relay, OUTPUT);
+  pinMode(right_front_delt_relay, OUTPUT);
+  pinMode(left_side_delt_relay, OUTPUT);
+  pinMode(right_side_delt_relay, OUTPUT);
 
   digitalWrite(left_bicept_relay, LOW);
   digitalWrite(right_bicept_relay, LOW);
@@ -67,6 +90,7 @@ void loop() {
 
     if (c == 'd') {
       BotScoopSequence();
+      delay(200);
     }
   }
 
