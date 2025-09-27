@@ -7,6 +7,7 @@ void MonsterCanSequence();
 void OpenCan();
 void TiltCan();
 void UnTiltCan();
+void SupplementSequence();
 
 // Assign PWM-capable pins for each servo
 int bottom_scoop_sweep_pin = 27;
@@ -14,8 +15,8 @@ int bottom_scoop_tilt_pin  = 26;
 int top_scoop_sweep_pin    = 25;
 int top_scoop_tilt_pin     = 33;
 int middle_scoop_pin       = 32;
-int monster_tilt_pin       = 19;
-int monster_lid_pin        = 18;
+int monster_tilt_pin       = 13;
+int monster_lid_pin        = 12;
 
 int left_bicept_relay  = 4;
 int right_bicept_relay = 5;
@@ -57,9 +58,9 @@ void setup() {
   delay(50);
   top_scoop_tilt_servo.write(15);
   delay(50);
-  middle_servo.write(90);
+  middle_servo.write(70);
   delay(50);
-  monster_tilt_servo.write(0);
+  monster_tilt_servo.write(180);
   delay(50);
   monster_lid_servo.write(0);
   delay(50);
@@ -90,34 +91,33 @@ void loop() {
 
     if (c == 'd') {
       Serial.println("D key pressed");
-      BotScoopSequence();
-      delay(500);
-      TopScoopSequence();
-      delay(200);
+      SupplementSequence();
     }
   }
 
 }
 
 void SupplementSequence() {
+      BotScoopSequence();
+      delay(500);
+      TopScoopSequence();
+      delay(500);
+      MonsterCanSequence();
+      delay(1000);
 
-  BotScoopSequence();
+      middle_servo.write(180); //not sure if 0 or 180
 
-  delay(250);
+      delay(500);
+      for(int i = 0; i<10; i++) {
+        middle_servo.write(120); //not sure if 0 or 180
+        delay(250);
+        middle_servo.write(180); //not sure if 0 or 180
+        delay(500);
+      }
 
-  TopScoopSequence();
+      middle_servo.write(70); //not sure if 0 or 180
 
-  delay(500);
-
-  //open the monster
-  MonsterCanSequence();
-  
-  delay(500);
-
-  //move main scoop up
-  middle_servo.write(0); //not sure if 0 or 180
-
-  //back and forth of main scoop
+      delay(200);
 }
 
 void BotScoopSequence() {
@@ -148,22 +148,22 @@ void TopScoopSequence() {
 
 void MonsterCanSequence() {
   OpenCan();
-  delay(500);
+  delay(2000);
   TiltCan();
-  delay(500);
+  delay(3000);
   UnTiltCan();
 }
 
 void OpenCan() {
-  monster_lid_servo.write(180);
+  monster_lid_servo.write(170);
 }
 
 void TiltCan() {
-  monster_tilt_servo.write(120);
+  monster_tilt_servo.write(50);
 }
 
 void UnTiltCan() {
-    monster_tilt_servo.write(0);
+    monster_tilt_servo.write(180);
 }
 
 enum Side {
