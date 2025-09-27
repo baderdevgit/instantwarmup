@@ -55,7 +55,7 @@ void setup() {
   delay(50);
   top_scoop_sweep_servo.write(90);
   delay(50);
-  top_scoop_tilt_servo.write(0);
+  top_scoop_tilt_servo.write(15);
   delay(50);
   middle_servo.write(90);
   delay(50);
@@ -89,7 +89,10 @@ void loop() {
     char c = Serial.read();
 
     if (c == 'd') {
+      Serial.println("D key pressed");
       BotScoopSequence();
+      delay(500);
+      TopScoopSequence();
       delay(200);
     }
   }
@@ -119,26 +122,26 @@ void SupplementSequence() {
 
 void BotScoopSequence() {
   //move bottom scoop
-  bot_scoop_sweep_servo.write(45); //might be 135 idk
-  delay(250);
+  bot_scoop_sweep_servo.write(20);
+  delay(500);
   //turn it
   bot_scoop_tilt_servo.write(180);
-  delay(500);
+  delay(750);
   bot_scoop_tilt_servo.write(0);
-  delay(250);
+  delay(500);
   //move bottom scoop back
   bot_scoop_sweep_servo.write(90);
 }
 
 void TopScoopSequence() {
   //move bottom scoop
-  top_scoop_sweep_servo.write(45); //might be 135 idk
-  delay(250);
+  top_scoop_sweep_servo.write(30);
+  delay(500);
   //turn it
   top_scoop_tilt_servo.write(180);
+  delay(750);
+  top_scoop_tilt_servo.write(15);
   delay(500);
-  top_scoop_tilt_servo.write(0);
-  delay(250);
   //move bottom scoop back
   top_scoop_sweep_servo.write(90);
 }
