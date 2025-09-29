@@ -23,7 +23,7 @@ void ToggleFrontDelt(Side side, bool on);
 
 void TestRelays(int relayPins[], int numRelays);
 
-int currentDelay = 500;  // start at 1 second
+int currentDelay = 500;  // start at 500ms
 
 // Assign PWM-capable pins for each servo
 int bottom_scoop_sweep_pin = 27;
@@ -54,6 +54,22 @@ Servo middle_servo;
 Servo monster_tilt_servo;
 Servo monster_lid_servo; // fixed typo: should be a Servo, not int
 
+// Muscle state flags
+bool isRightForearm = false;
+bool isLeftForearm = false;
+bool isRightDelt = false;
+bool isLeftDelt = false;
+
+// FreeRTOS task handle for muscle sequence
+TaskHandle_t muscleTaskHandle = NULL;
+
+// Muscle sequence task
+void muscleTask(void * parameter) {
+  while(true) {
+    MuscleContractionSequence();  // runs indefinitely
+  }
+}
+
 void setup() {
   Serial.begin(115200);
   Serial.println("Program Ready, Press D to trigger");
@@ -67,22 +83,16 @@ void setup() {
   monster_tilt_servo.attach(monster_tilt_pin);
   monster_lid_servo.attach(monster_lid_pin);
 
-  // Set all servos to 90°
-  bot_scoop_sweep_servo.write(90);
-  delay(50);
-  bot_scoop_tilt_servo.write(0);
-  delay(50);
-  top_scoop_sweep_servo.write(90);
-  delay(50);
-  top_scoop_tilt_servo.write(15);
-  delay(50);
-  middle_servo.write(70);
-  delay(50);
-  monster_tilt_servo.write(180);
-  delay(50);
-  monster_lid_servo.write(0);
-  delay(50);
+  // Set all servos to initial positions
+  bot_scoop_sweep_servo.write(90); delay(50);
+  bot_scoop_tilt_servo.write(0); delay(50);
+  top_scoop_sweep_servo.write(90); delay(50);
+  top_scoop_tilt_servo.write(15); delay(50);
+  middle_servo.write(70); delay(50);
+  monster_tilt_servo.write(180); delay(50);
+  monster_lid_servo.write(0); delay(50);
 
+  // Set relay pins as output and initialize HIGH
   pinMode(left_bicept_relay, OUTPUT);
   pinMode(right_bicept_relay, OUTPUT);
   pinMode(left_tricept_relay, OUTPUT);
@@ -103,36 +113,42 @@ void setup() {
 }
 
 void loop() {
-
   if (Serial.available() > 0) {
     char c = Serial.read();
-
     if (c == 'd') {
       Serial.println("D key pressed");
 
+      // Start muscle task immediately if not already running
+      if (muscleTaskHandle == NULL) {
+        xTaskCreatePinnedToCore(
+          muscleTask,        // Task function
+          "MuscleTask",      // Task name
+          4096,              // Stack size
+          NULL,              // Parameters
+          1,                 // Priority
+          &muscleTaskHandle, // Task handle
+          1                  // Run on core 1
+        );
+      }
+
+      // Run supplement sequence concurrently on main loop/core
       SupplementSequence();
-      MuscleContractionSequence();
     }
   }
-
 }
+
+// ---------- Sequences ----------
 
 void TestRelays(int relayPins[], int numRelays = 8) {
   for (int i = 0; i < numRelays; i++) {
-    digitalWrite(relayPins[i], HIGH);  // Turn relay ON
+    digitalWrite(relayPins[i], HIGH);
     delay(500);
-    digitalWrite(relayPins[i], LOW);   // Turn relay OFF
+    digitalWrite(relayPins[i], LOW);
     delay(200);
   }
 }
 
-bool isRightForearm = false;
-bool isLeftForearm = false;
-bool isRightDelt = false;
-bool isLeftDelt = false;
-
 void MuscleContractionSequence() {
-  // Pick a random function (0-3)
   int choice = random(4);
   switch (choice) {
     case 0: CurlArm(right); break;
@@ -151,82 +167,60 @@ void MuscleContractionSequence() {
 
   delay(currentDelay);
 
-  // Linearly reduce delay until we hit 100 ms
+  // Reduce delay linearly
   if (currentDelay > 100) {
-    currentDelay -= 45;  // 1000 -> 910 -> ... -> 100
+    currentDelay -= 10;
     if (currentDelay < 100) currentDelay = 100;
   }
 }
 
 void SupplementSequence() {
-      BotScoopSequence();
-      delay(500);
-      TopScoopSequence();
-      delay(500);
-      MonsterCanSequence();
-      delay(1000);
+  BotScoopSequence();
+  delay(500);
+  TopScoopSequence();
+  delay(500);
+  MonsterCanSequence();
+  delay(1000);
 
-      middle_servo.write(180); //not sure if 0 or 180
+  middle_servo.write(180);
+  delay(500);
 
-      delay(500);
-      for(int i = 0; i<10; i++) {
-        middle_servo.write(120); //not sure if 0 or 180
-        delay(250);
-        middle_servo.write(180); //not sure if 0 or 180
-        delay(500);
-      }
+  for(int i = 0; i < 10; i++) {
+    middle_servo.write(120);
+    delay(250);
+    middle_servo.write(180);
+    delay(500);
+  }
 
-      middle_servo.write(70); //not sure if 0 or 180
-
-      delay(200);
+  middle_servo.write(70);
+  delay(200);
 }
 
 void BotScoopSequence() {
-  //move bottom scoop
-  bot_scoop_sweep_servo.write(20);
-  delay(500);
-  //turn it
-  bot_scoop_tilt_servo.write(180);
-  delay(750);
-  bot_scoop_tilt_servo.write(0);
-  delay(500);
-  //move bottom scoop back
+  bot_scoop_sweep_servo.write(20); delay(500);
+  bot_scoop_tilt_servo.write(180); delay(750);
+  bot_scoop_tilt_servo.write(0); delay(500);
   bot_scoop_sweep_servo.write(90);
 }
 
 void TopScoopSequence() {
-  //move bottom scoop
-  top_scoop_sweep_servo.write(30);
-  delay(500);
-  //turn it
-  top_scoop_tilt_servo.write(180);
-  delay(750);
-  top_scoop_tilt_servo.write(15);
-  delay(500);
-  //move bottom scoop back
+  top_scoop_sweep_servo.write(30); delay(500);
+  top_scoop_tilt_servo.write(180); delay(750);
+  top_scoop_tilt_servo.write(15); delay(500);
   top_scoop_sweep_servo.write(90);
 }
 
 void MonsterCanSequence() {
-  OpenCan();
-  delay(2000);
-  TiltCan();
-  delay(3000);
+  OpenCan(); delay(2000);
+  TiltCan(); delay(3000);
   UnTiltCan();
 }
 
-void OpenCan() {
-  monster_lid_servo.write(170);
-}
+void OpenCan() { monster_lid_servo.write(170); }
+void TiltCan() { monster_tilt_servo.write(50); }
+void UnTiltCan() { monster_tilt_servo.write(180); }
 
-void TiltCan() {
-  monster_tilt_servo.write(50);
-}
-
-void UnTiltCan() {
-    monster_tilt_servo.write(180);
-}
-
+// ---------- Muscle Functions ----------
 
 void CurlArm(Side side) {
   ToggleBicept(side, true);
@@ -240,37 +234,17 @@ void StraightenArm(Side side) {
 }
 
 void ToggleBicept(Side side, bool on) {
-  if (side == left) {
-      digitalWrite(left_bicept_relay, on ? LOW : HIGH);
-  } 
-  else {
-      digitalWrite(right_bicept_relay, on ? LOW : HIGH);
-  }
+  digitalWrite(side == left ? left_bicept_relay : right_bicept_relay, on ? LOW : HIGH);
 }
 
 void ToggleTricept(Side side, bool on) {
-  if (side == left) {
-      digitalWrite(left_tricept_relay, on ? LOW : HIGH);
-  } 
-  else {
-      digitalWrite(right_tricept_relay, on ? LOW : HIGH);
-  }
+  digitalWrite(side == left ? left_tricept_relay : right_tricept_relay, on ? LOW : HIGH);
 }
 
 void ToggleForearm(Side side, bool on) {
-  if (side == left) {
-      digitalWrite(left_forearm_relay, on ? LOW : HIGH);
-  } 
-  else {
-      digitalWrite(right_forearm_relay, on ? LOW : HIGH);
-  }
+  digitalWrite(side == left ? left_forearm_relay : right_forearm_relay, on ? LOW : HIGH);
 }
 
 void ToggleFrontDelt(Side side, bool on) {
-  if (side == left) {
-      digitalWrite(left_front_delt_relay, on ? LOW : HIGH);
-  } 
-  else {
-      digitalWrite(right_front_delt_relay, on ? LOW : HIGH);
-  }
+  digitalWrite(side == left ? left_front_delt_relay : right_front_delt_relay, on ? LOW : HIGH);
 }
