@@ -1,6 +1,11 @@
 #include <Arduino.h>
 #include <ESP32Servo.h>
 
+enum Side {
+  left,
+  right
+};
+
 void BotScoopSequence();
 void TopScoopSequence();
 void MonsterCanSequence();
@@ -8,6 +13,17 @@ void OpenCan();
 void TiltCan();
 void UnTiltCan();
 void SupplementSequence();
+void MuscleContractionSequence();
+void CurlArm(Side side);
+void StraightenArm(Side side);
+void ToggleBicept(Side side, bool on);
+void ToggleTricept(Side side, bool on);
+void ToggleForearm(Side side, bool on);
+void ToggleFrontDelt(Side side, bool on);
+
+void TestRelays(int relayPins[], int numRelays);
+
+int currentDelay = 500;  // start at 1 second
 
 // Assign PWM-capable pins for each servo
 int bottom_scoop_sweep_pin = 27;
@@ -94,18 +110,52 @@ void loop() {
     if (c == 'd') {
       Serial.println("D key pressed");
 
-      // SupplementSequence();
+      SupplementSequence();
       MuscleContractionSequence();
-      delay(200);
     }
   }
 
 }
 
+void TestRelays(int relayPins[], int numRelays = 8) {
+  for (int i = 0; i < numRelays; i++) {
+    digitalWrite(relayPins[i], HIGH);  // Turn relay ON
+    delay(500);
+    digitalWrite(relayPins[i], LOW);   // Turn relay OFF
+    delay(200);
+  }
+}
+
+bool isRightForearm = false;
+bool isLeftForearm = false;
+bool isRightDelt = false;
+bool isLeftDelt = false;
+
 void MuscleContractionSequence() {
-  CurlArm(right);
-  delay(500);
-  StraightenArm(right);
+  // Pick a random function (0-3)
+  int choice = random(4);
+  switch (choice) {
+    case 0: CurlArm(right); break;
+    case 1: StraightenArm(right); break;
+    case 2: ToggleForearm(right, !isRightForearm); isRightForearm = !isRightForearm; break;
+    case 3: ToggleFrontDelt(right, !isRightDelt); isRightDelt = !isRightDelt; break;
+  }
+
+  int choiceL = random(4);
+  switch (choiceL) {
+    case 0: CurlArm(left); break;
+    case 1: StraightenArm(left); break;
+    case 2: ToggleForearm(left, !isLeftForearm); isLeftForearm = !isLeftForearm; break;
+    case 3: ToggleFrontDelt(left, !isLeftDelt); isLeftDelt = !isLeftDelt; break;
+  }
+
+  delay(currentDelay);
+
+  // Linearly reduce delay until we hit 100 ms
+  if (currentDelay > 100) {
+    currentDelay -= 45;  // 1000 -> 910 -> ... -> 100
+    if (currentDelay < 100) currentDelay = 100;
+  }
 }
 
 void SupplementSequence() {
@@ -177,14 +227,11 @@ void UnTiltCan() {
     monster_tilt_servo.write(180);
 }
 
-enum Side {
-  left,
-  right
-};
 
 void CurlArm(Side side) {
   ToggleBicept(side, true);
   ToggleTricept(side, false);
+  ToggleForearm(side, false);
 }
 
 void StraightenArm(Side side) {
@@ -210,7 +257,7 @@ void ToggleTricept(Side side, bool on) {
   }
 }
 
-void ToggleSideDelt(Side side, bool on) {
+void ToggleForearm(Side side, bool on) {
   if (side == left) {
       digitalWrite(left_forearm_relay, on ? LOW : HIGH);
   } 
