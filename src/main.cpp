@@ -21,11 +21,9 @@ void ToggleTricept(Side side, bool on);
 void ToggleForearm(Side side, bool on);
 void ToggleFrontDelt(Side side, bool on);
 
-void TestRelays(int relayPins[], int numRelays);
-
 int currentDelay = 500;  // start at 500ms
 
-// Assign PWM-capable pins for each servo
+// Servo pins
 int bottom_scoop_sweep_pin = 27;
 int bottom_scoop_tilt_pin  = 26;
 int top_scoop_sweep_pin    = 25;
@@ -34,6 +32,7 @@ int middle_scoop_pin       = 32;
 int monster_tilt_pin       = 13;
 int monster_lid_pin        = 12;
 
+// Relay pins
 int left_bicept_relay  = 23;
 int right_bicept_relay = 22;
 int left_tricept_relay = 21;
@@ -43,8 +42,6 @@ int right_front_delt_relay = 5;
 int left_forearm_relay    = 4;
 int right_forearm_relay   = 15;
 
-int relayArray[] = {23, 22, 21, 19, 18, 5, 4, 15};
-
 // Servo objects
 Servo bot_scoop_sweep_servo;
 Servo bot_scoop_tilt_servo;
@@ -52,7 +49,7 @@ Servo top_scoop_sweep_servo;
 Servo top_scoop_tilt_servo;
 Servo middle_servo;
 Servo monster_tilt_servo;
-Servo monster_lid_servo; // fixed typo: should be a Servo, not int
+Servo monster_lid_servo;
 
 // Muscle state flags
 bool isRightForearm = false;
@@ -72,9 +69,9 @@ void muscleTask(void * parameter) {
 
 void setup() {
   Serial.begin(115200);
-  Serial.println("Program Ready, Press D to trigger");
+  Serial.println("Program Ready: sequences will start immediately");
 
-  // Attach all servos to their pins
+  // Attach servos
   bot_scoop_sweep_servo.attach(bottom_scoop_sweep_pin);
   bot_scoop_tilt_servo.attach(bottom_scoop_tilt_pin);
   top_scoop_sweep_servo.attach(top_scoop_sweep_pin);
@@ -83,7 +80,7 @@ void setup() {
   monster_tilt_servo.attach(monster_tilt_pin);
   monster_lid_servo.attach(monster_lid_pin);
 
-  // Set all servos to initial positions
+  // Initial servo positions
   bot_scoop_sweep_servo.write(90); delay(50);
   bot_scoop_tilt_servo.write(0); delay(50);
   top_scoop_sweep_servo.write(90); delay(50);
@@ -92,62 +89,31 @@ void setup() {
   monster_tilt_servo.write(180); delay(50);
   monster_lid_servo.write(0); delay(50);
 
-  // Set relay pins as output and initialize HIGH
-  pinMode(left_bicept_relay, OUTPUT);
-  pinMode(right_bicept_relay, OUTPUT);
-  pinMode(left_tricept_relay, OUTPUT);
-  pinMode(right_tricept_relay, OUTPUT);
-  pinMode(left_front_delt_relay, OUTPUT);
-  pinMode(right_front_delt_relay, OUTPUT);
-  pinMode(left_forearm_relay, OUTPUT);
-  pinMode(right_forearm_relay, OUTPUT);
+  // Set relays as output and HIGH
+  int relays[] = {left_bicept_relay, right_bicept_relay, left_tricept_relay, right_tricept_relay,
+                  left_front_delt_relay, right_front_delt_relay, left_forearm_relay, right_forearm_relay};
+  for(int i=0;i<8;i++) pinMode(relays[i], OUTPUT), digitalWrite(relays[i], HIGH);
 
-  digitalWrite(left_bicept_relay, HIGH);
-  digitalWrite(right_bicept_relay, HIGH);
-  digitalWrite(left_tricept_relay, HIGH);
-  digitalWrite(right_tricept_relay, HIGH);
-  digitalWrite(left_front_delt_relay, HIGH);
-  digitalWrite(right_front_delt_relay, HIGH);
-  digitalWrite(left_forearm_relay, HIGH);
-  digitalWrite(right_forearm_relay, HIGH);
+  // Start muscle sequence task immediately
+  xTaskCreatePinnedToCore(
+    muscleTask,        // Task function
+    "MuscleTask",      // Task name
+    4096,              // Stack size
+    NULL,              // Parameters
+    1,                 // Priority
+    &muscleTaskHandle, // Task handle
+    1                  // Run on core 1
+  );
+
+  // Run supplement sequence once immediately
+  SupplementSequence();
 }
 
 void loop() {
-  if (Serial.available() > 0) {
-    char c = Serial.read();
-    if (c == 'd') {
-      Serial.println("D key pressed");
-
-      // Start muscle task immediately if not already running
-      if (muscleTaskHandle == NULL) {
-        xTaskCreatePinnedToCore(
-          muscleTask,        // Task function
-          "MuscleTask",      // Task name
-          4096,              // Stack size
-          NULL,              // Parameters
-          1,                 // Priority
-          &muscleTaskHandle, // Task handle
-          1                  // Run on core 1
-        );
-      }
-
-      // Run supplement sequence concurrently on main loop/core
-      SupplementSequence();
-    }
-  }
+  // Nothing needed in loop; everything runs automatically
 }
 
 // ---------- Sequences ----------
-
-void TestRelays(int relayPins[], int numRelays = 8) {
-  for (int i = 0; i < numRelays; i++) {
-    digitalWrite(relayPins[i], HIGH);
-    delay(500);
-    digitalWrite(relayPins[i], LOW);
-    delay(200);
-  }
-}
-
 void MuscleContractionSequence() {
   int choice = random(4);
   switch (choice) {
@@ -167,33 +133,25 @@ void MuscleContractionSequence() {
 
   delay(currentDelay);
 
-  // Reduce delay linearly
-  if (currentDelay > 100) {
-    currentDelay -= 10;
-    if (currentDelay < 100) currentDelay = 100;
+  if(currentDelay > 100){
+    currentDelay -= 30;
+    if(currentDelay < 200) currentDelay = 100;
   }
 }
 
 void SupplementSequence() {
-  BotScoopSequence();
-  delay(500);
-  TopScoopSequence();
-  delay(500);
-  MonsterCanSequence();
-  delay(1000);
+  BotScoopSequence(); delay(500);
+  TopScoopSequence(); delay(500);
+  MonsterCanSequence(); delay(1000);
 
-  middle_servo.write(180);
-  delay(500);
+  middle_servo.write(180); delay(500);
 
-  for(int i = 0; i < 10; i++) {
-    middle_servo.write(120);
-    delay(250);
-    middle_servo.write(180);
-    delay(500);
+  for(int i=0;i<10;i++){
+    middle_servo.write(120); delay(250);
+    middle_servo.write(180); delay(500);
   }
 
-  middle_servo.write(70);
-  delay(200);
+  middle_servo.write(70); delay(200);
 }
 
 void BotScoopSequence() {
@@ -221,7 +179,6 @@ void TiltCan() { monster_tilt_servo.write(50); }
 void UnTiltCan() { monster_tilt_servo.write(180); }
 
 // ---------- Muscle Functions ----------
-
 void CurlArm(Side side) {
   ToggleBicept(side, true);
   ToggleTricept(side, false);
