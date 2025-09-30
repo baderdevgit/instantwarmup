@@ -21,7 +21,7 @@ void ToggleTricept(Side side, bool on);
 void ToggleForearm(Side side, bool on);
 void ToggleFrontDelt(Side side, bool on);
 
-int currentDelay = 500;  // start at 500ms
+int currentDelay = 1000;  // start at 500ms
 
 // Servo pins
 int bottom_scoop_sweep_pin = 27;
@@ -30,7 +30,7 @@ int top_scoop_sweep_pin    = 25;
 int top_scoop_tilt_pin     = 33;
 int middle_scoop_pin       = 32;
 int monster_tilt_pin       = 13;
-int monster_lid_pin        = 12;
+int monster_lid_pin        = 2;
 
 // Relay pins
 int left_bicept_relay  = 23;
@@ -133,9 +133,9 @@ void MuscleContractionSequence() {
 
   delay(currentDelay);
 
-  if(currentDelay > 100){
+  if(currentDelay > 300){
     currentDelay -= 30;
-    if(currentDelay < 200) currentDelay = 100;
+    if(currentDelay < 300) currentDelay = 300;
   }
 }
 
